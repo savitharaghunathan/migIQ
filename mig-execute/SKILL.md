@@ -205,11 +205,11 @@ You are executing a migration task. Here's the context:
 **Migration Skill Context** (include ONLY if a migration skill was detected in Phase 1):
 - Read the module file for this task's phase: .claude/skills/[skill-name]/modules/[phase].md
   This contains step-by-step instructions for the migration phase this task belongs to.
-- Read the relevant reference tables from .claude/skills/[skill-name]/references/:
-  - For build-system tasks: dependency-map.md
-  - For code tasks: api-map.md, pattern-map.md
-  - For config tasks: config-map.md
-  - For testing tasks: api-map.md (test-related rows)
+  If no module file matches the phase name, skip to the reference tables.
+- List all .md files in .claude/skills/[skill-name]/references/ and read the ones
+  relevant to the current task. Common names include dependency-map.md, api-map.md,
+  config-map.md, pattern-map.md — but skills may use different names. Read all available
+  reference files and use the rows that apply to the current task's phase.
   
   IMPORTANT: When a mapping table specifies a transformation (e.g., @Autowired → @Inject),
   use that exact transformation. Do not substitute alternatives from your training data.

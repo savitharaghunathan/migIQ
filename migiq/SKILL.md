@@ -895,10 +895,7 @@ project-root/
 **Migration Skill**: [skill name]
 **Source Repository**: [from manifest source field]
 **Mapping Tables Applied**:
-- Dependency replacements: [count of rows in dependency-map.md]
-- API changes: [count of rows in api-map.md]
-- Config property renames: [count of rows in config-map.md]
-- Pattern transformations: [count of rows in pattern-map.md]
+- [For each .md file in the skill's references/ directory, list its name and row count]
 
 [If no migration skill was used]
 **Migration Knowledge**: General LLM training data

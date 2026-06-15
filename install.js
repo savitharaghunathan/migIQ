@@ -264,84 +264,79 @@ function parseFrontmatter(filePath) {
 }
 
 /**
- * Scan a directory for migration skills.
- * Looks for skills/<lang>/<name>/SKILL.md and <name>/SKILL.md patterns.
- * Skips the generator/ directory.
+ * Scan a directory recursively for migration skills.
+ * Finds any SKILL.md file anywhere in the tree, regardless of directory structure.
+ * The skill directory is the parent directory of the SKILL.md file.
  */
 function discoverSkills(sourceDir) {
   const found = [];
   const seen = new Set();
+  const skipDirs = new Set(['.git', 'node_modules', '.claude']);
 
-  function scanSkillDir(skillDir, skillMdPath) {
-    const fm = parseFrontmatter(skillMdPath);
-    if (!fm || !fm.name) return;
-    if (seen.has(fm.name)) return;
+  const coreSkills = new Set(['migiq', 'mig-graphify', 'mig-plan', 'mig-prompt-builder',
+    'mig-execute', 'mig-test-gen', 'mig-containerize', 'mig-deploy']);
 
-    const coreSkills = ['migiq', 'mig-graphify', 'mig-plan', 'mig-prompt-builder',
-      'mig-execute', 'mig-test-gen', 'mig-containerize', 'mig-deploy'];
-    if (coreSkills.includes(fm.name)) {
-      console.log(`  ⚠️  Skipping "${fm.name}" — name conflicts with core migIQ skill`);
+  function walkDir(dir) {
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
       return;
     }
 
-    seen.add(fm.name);
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        if (skipDirs.has(entry.name)) continue;
+        walkDir(path.join(dir, entry.name));
+      } else if (entry.name === 'SKILL.md') {
+        const skillMdPath = path.join(dir, entry.name);
+        const skillDir = dir;
 
-    const modules = [];
-    const modulesDir = path.join(skillDir, 'modules');
-    if (fs.existsSync(modulesDir)) {
-      for (const f of fs.readdirSync(modulesDir)) {
-        if (f.endsWith('.md')) modules.push(f.replace('.md', ''));
-      }
-    }
+        const fm = parseFrontmatter(skillMdPath);
+        if (!fm || !fm.name) continue;
+        if (!fm.metadata || !fm.metadata.source || !fm.metadata.target) continue;
+        if (seen.has(fm.name)) continue;
 
-    const references = [];
-    const refsDir = path.join(skillDir, 'references');
-    if (fs.existsSync(refsDir)) {
-      for (const f of fs.readdirSync(refsDir)) {
-        if (f.endsWith('.md')) references.push(f.replace('.md', ''));
-      }
-    }
-
-    found.push({
-      name: fm.name,
-      sourceTech: (fm.metadata && fm.metadata.source) || null,
-      targetTech: (fm.metadata && fm.metadata.target) || null,
-      language: (fm.metadata && fm.metadata.language) || null,
-      buildTool: (fm.metadata && fm.metadata.build_tool) || null,
-      sourcePath: skillDir,
-      hasModules: modules.length > 0,
-      hasReferences: references.length > 0,
-      modules: modules,
-      references: references
-    });
-  }
-
-  // Pattern 1: skills/<lang>/<name>/SKILL.md (migration-skills repo layout)
-  const skillsDir = path.join(sourceDir, 'skills');
-  if (fs.existsSync(skillsDir)) {
-    for (const lang of fs.readdirSync(skillsDir, { withFileTypes: true })) {
-      if (!lang.isDirectory()) continue;
-      const langDir = path.join(skillsDir, lang.name);
-      for (const skill of fs.readdirSync(langDir, { withFileTypes: true })) {
-        if (!skill.isDirectory()) continue;
-        const skillMd = path.join(langDir, skill.name, 'SKILL.md');
-        if (fs.existsSync(skillMd)) {
-          scanSkillDir(path.join(langDir, skill.name), skillMd);
+        if (coreSkills.has(fm.name)) {
+          console.log(`  ⚠️  Skipping "${fm.name}" — name conflicts with core migIQ skill`);
+          continue;
         }
+
+        seen.add(fm.name);
+
+        const modules = [];
+        const modulesDir = path.join(skillDir, 'modules');
+        if (fs.existsSync(modulesDir)) {
+          for (const f of fs.readdirSync(modulesDir)) {
+            if (f.endsWith('.md')) modules.push(f.replace('.md', ''));
+          }
+        }
+
+        const references = [];
+        const refsDir = path.join(skillDir, 'references');
+        if (fs.existsSync(refsDir)) {
+          for (const f of fs.readdirSync(refsDir)) {
+            if (f.endsWith('.md')) references.push(f.replace('.md', ''));
+          }
+        }
+
+        found.push({
+          name: fm.name,
+          sourceTech: (fm.metadata && fm.metadata.source) || null,
+          targetTech: (fm.metadata && fm.metadata.target) || null,
+          language: (fm.metadata && fm.metadata.language) || null,
+          buildTool: (fm.metadata && fm.metadata.build_tool) || null,
+          sourcePath: skillDir,
+          hasModules: modules.length > 0,
+          hasReferences: references.length > 0,
+          modules: modules,
+          references: references
+        });
       }
     }
   }
 
-  // Pattern 2: <name>/SKILL.md (flat layout, skip generator/)
-  for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    if (entry.name === 'generator' || entry.name === 'skills' || entry.name === 'node_modules' || entry.name === '.git') continue;
-    const skillMd = path.join(sourceDir, entry.name, 'SKILL.md');
-    if (fs.existsSync(skillMd)) {
-      scanSkillDir(path.join(sourceDir, entry.name), skillMd);
-    }
-  }
-
+  walkDir(sourceDir);
   return found;
 }
 

@@ -66,23 +66,31 @@ When a migration skill is available, structure task groups around the skill's ph
 
 1. **Read the skill's SKILL.md** from the path in the Migration Skill Reference section. Extract the ordered phase list (e.g., build-system, code, config, testing, additional, cleanup).
 
-2. **Create one task group per phase.** For each phase:
+2. **Discover available files.** List what exists in the skill directory:
+   - Check `.claude/skills/<skill-name>/modules/` — list all `.md` files (these are the phase modules)
+   - Check `.claude/skills/<skill-name>/references/` — list all `.md` files (these are the mapping tables)
+   - Not every skill will have the same files. Some may have `dependency-map.md` and `api-map.md`, others may have `deps.md` or `mappings.md`. Use whatever exists.
 
-   a. **Read the module file** at `.claude/skills/<skill-name>/modules/<phase>.md` — this contains step-by-step instructions for the phase.
+3. **Create one task group per phase.** For each phase:
 
-   b. **Read the relevant reference tables** at `.claude/skills/<skill-name>/references/`:
-      - **build-system phase**: Read `dependency-map.md`. Create subtasks grouped by logical section (e.g., "Replace Spring Boot starters with Quarkus extensions", "Replace build plugins", "Update database drivers"). Don't create one subtask per row — group related changes.
-      - **code phase**: Read `api-map.md` and `pattern-map.md`. Create subtasks grouped by `kind` (annotations, classes, methods) and by `category` (behavioral, structural). Example: "Replace DI annotations (@Autowired → @Inject, @Component → @ApplicationScoped, etc.)"
-      - **config phase**: Read `config-map.md`. Create subtasks grouped by domain (datasource properties, logging properties, server properties, etc.).
-      - **testing phase**: Read `api-map.md` for test-related rows. Create subtasks for test framework changes.
-      - **additional/cleanup phases**: Read the module file and create subtasks matching its steps.
+   a. **Read the module file** at `.claude/skills/<skill-name>/modules/<phase>.md` if it exists — this contains step-by-step instructions for the phase. If no module file matches the phase name, skip to the reference tables.
+
+   b. **Read ALL available reference tables** at `.claude/skills/<skill-name>/references/`. For each `.md` file found, read it and extract the mapping rows relevant to the current phase. Common naming conventions (not required):
+      - `dependency-map.md` — dependency replacements (most relevant for build-system phases)
+      - `api-map.md` — API/class/annotation changes (most relevant for code phases)
+      - `config-map.md` — config property renames (most relevant for config phases)
+      - `pattern-map.md` — structural pattern changes (relevant across phases)
+      
+      But if the skill uses different names, read all reference files and assign rows to phases based on content, not filename.
+      
+      Create subtasks grouped by logical section — don't create one subtask per row. Group related changes together (e.g., "Replace DI annotations", "Update database drivers").
 
    c. **Add a build gate subtask** at the end of each task group using the build command from the Migration Skill Reference section (e.g., the `build_tool` metadata value):
       ```markdown
       - [ ] N.LAST **Build Gate**: Run the build command — fix all errors before proceeding to next phase
       ```
 
-   d. **Add a skill reference line** to each task group:
+   d. **Add a skill reference line** to each task group pointing to the module file (if one exists):
       ```markdown
       > **Skill Reference**: `.claude/skills/<skill-name>/modules/<phase>.md` — read for detailed instructions
       ```
@@ -97,24 +105,22 @@ When a migration skill is available, structure task groups around the skill's ph
    ```markdown
    # Migration Tasks
 
-   ## 1. Build System Migration
-   > **Skill Reference**: `.claude/skills/<name>/modules/build-system.md`
-   - [ ] 1.1 [subtasks from dependency-map groupings]
+   ## 1. [First Phase Name] Migration
+   > **Skill Reference**: `.claude/skills/<name>/modules/[phase].md` (if exists)
+   - [ ] 1.1 [subtasks from relevant reference table groupings]
    - [ ] 1.2 ...
    - [ ] 1.N **Build Gate**: Run build command from Migration Skill Reference
 
-   ## 2. Code Migration
-   > **Skill Reference**: `.claude/skills/<name>/modules/code.md`
-   - [ ] 2.1 [subtasks from api-map/pattern-map groupings]
+   ## 2. [Second Phase Name] Migration
+   > **Skill Reference**: `.claude/skills/<name>/modules/[phase].md` (if exists)
+   - [ ] 2.1 [subtasks from relevant reference table groupings]
    - [ ] 2.N **Build Gate**: Run build command from Migration Skill Reference
 
-   ## 3. Configuration Migration
-   ## 4. Testing Migration
-   ## 5. Additional Migration
-   ## 6. Cleanup
-   ## 7. Test Generation (mig-test-gen)
-   ## 8. Containerization (mig-containerize)
-   ## 9. Deployment (mig-deploy)
+   ## ... [one group per phase from the skill]
+
+   ## N+1. Test Generation (mig-test-gen)
+   ## N+2. Containerization (mig-containerize)
+   ## N+3. Deployment (mig-deploy)
    ```
 
 #### Standard Task Generation (No Migration Skill)
